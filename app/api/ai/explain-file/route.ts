@@ -1,6 +1,30 @@
+
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/middleware'
 import { repositoryService } from '@/lib/services/repositoryService'
+
+type RepositoryFile = {
+  path: string
+  size: number          // bytes or LOC
+  language?: string      // e.g. "TypeScript"
+  extension?: string      // e.g. "TypeScript"
+}
+
+
+type RepositoryCommit = {
+  shortHash: string
+  message: string
+}
+
+type RepositoryContributor = {
+  name: string
+}
+
+type Repository = {
+  files: RepositoryFile[]
+  commits: RepositoryCommit[]
+  contributors: RepositoryContributor[]
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +39,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const repository = await repositoryService.getRepository(repositoryId, user.userId)
+const repository = (await repositoryService.getRepository(
+  repositoryId,
+  user.userId
+)) as Repository
 
     if (!repository) {
       return NextResponse.json({ error: 'Repository not found' }, { status: 404 })
