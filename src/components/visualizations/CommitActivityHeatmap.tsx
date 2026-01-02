@@ -458,7 +458,7 @@ export function CommitActivityHeatmap({
           color: "white",
           zIndex: 9999,
           backdropFilter: "blur(8px)",
-          transform: "translate(-250px, -250px)",
+          transform: "translate(-300px, -300px)",
           left: "0px",
           top: "0px",
           whiteSpace: "nowrap",

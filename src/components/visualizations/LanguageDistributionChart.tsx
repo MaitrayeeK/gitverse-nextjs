@@ -109,7 +109,7 @@ export function LanguageDistributionChart({
           .attr("stroke", "rgba(255,255,255,0.8)")
           .attr("stroke-width", 3);
 
-        if (tooltipRef.current) {
+        if (tooltipRef.current && svgRef.current) {
           const tooltip = d3.select(tooltipRef.current);
           tooltip.html(`
             <div class="space-y-1.5">
@@ -121,18 +121,26 @@ export function LanguageDistributionChart({
               <div class="text-xs">${d.data.lines.toLocaleString()} lines</div>
             </div>
           `);
+          const offset = 8;
+          const rect = svgRef.current.getBoundingClientRect();
+          const x = event.clientX - rect.left + offset;
+          const y = event.clientY - rect.top + offset;
           tooltip
             .style("opacity", "1")
             .style("display", "block")
-            .style("left", `${event.clientX}px`)
-            .style("top", `${event.clientY}px`);
+            .style("left", `${rect.left + x}px`)
+            .style("top", `${rect.top + y}px`);
         }
       })
       .on("mousemove", function (event) {
-        if (tooltipRef.current) {
+        if (tooltipRef.current && svgRef.current) {
+          const offset = 8;
+          const rect = svgRef.current.getBoundingClientRect();
+          const x = event.clientX - rect.left + offset;
+          const y = event.clientY - rect.top + offset;
           d3.select(tooltipRef.current)
-            .style("left", `${event.clientX}px`)
-            .style("top", `${event.clientY}px`);
+            .style("left", `${rect.left + x}px`)
+            .style("top", `${rect.top + y}px`);
         }
       })
       .on("mouseleave", function () {
@@ -256,7 +264,6 @@ export function LanguageDistributionChart({
           color: "white",
           zIndex: 9999,
           backdropFilter: "blur(8px)",
-          transform: "translate(-250px, -250px)",
           left: "0px",
           top: "0px",
         }}
