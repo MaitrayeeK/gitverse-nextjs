@@ -335,4 +335,5 @@ model Language {
 
   @@unique([repositoryId, name])
   @@map("languages")
+  @@index([repositoryId])
 }
