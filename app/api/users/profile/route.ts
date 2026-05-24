@@ -54,14 +54,14 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (avatar && typeof avatar !== "string") {
+ if ("avatar" in body && avatar !== undefined && avatar !== null && typeof avatar !== "string") {
       return NextResponse.json(
         { error: "Avatar must be a valid image URL" },
         { status: 400 }
       );
     }
 
-    if (avatar && !isValidAvatarUrl(avatar)) {
+    if (typeof avatar === "string" && avatar && !isValidAvatarUrl(avatar)) {
       return NextResponse.json(
         {
           error:
