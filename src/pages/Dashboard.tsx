@@ -49,12 +49,47 @@ export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
   const [repoUrl, setRepoUrl] = useState("");
+  const [repoScope, setRepoScope] = useState("");
   const [repositories, setRepositories] = useState<Repository[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
 
   useEffect(() => {
     fetchRepositories();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const active = document.activeElement;
+
+      const isTyping =
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        (active instanceof HTMLElement && active.isContentEditable);
+
+      if (e.key === "/" && !isTyping) {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+
+      if (
+        e.key === "/" &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.shiftKey &&
+        !isTyping
+      ) {
+        setRepoUrl("");
+        setRepoScope("");
+        searchRef.current?.blur();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   const fetchRepositories = async () => {
@@ -163,6 +198,7 @@ export default function Dashboard() {
           name: repoName,
           url: repoUrl.trim(),
           description: `Repository from ${repoUrl}`,
+          scope: repoScope.trim() || undefined,
         },
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -186,6 +222,7 @@ export default function Dashboard() {
       }
 
       setRepoUrl("");
+      setRepoScope("");
     } catch (error: any) {
       console.error("Error creating repository:", error);
       const errMsg = error.response?.data?.error || error.response?.data?.message || error.message || "Failed to analyze repository";
@@ -232,6 +269,19 @@ export default function Dashboard() {
                 <Plus className="h-4 w-4 mr-2" />
                 {analyzing ? "Analyzing..." : "Analyze Repository"}
               </Button>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 mt-3">
+              <Input
+                type="text"
+                placeholder="Scope (e.g., packages/, src/) - Optional"
+                value={repoScope}
+                onChange={(e) => setRepoScope(e.target.value)}
+                className="flex-1 bg-background/50 max-w-sm"
+                onKeyPress={(e) => e.key === "Enter" && handleAnalyze()}
+              />
+            </div>
+            <div className="mt-3">
+              <ShortcutHint />
             </div>
           </CardContent>
         </Card>

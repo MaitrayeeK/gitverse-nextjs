@@ -581,7 +581,7 @@ export class GitService {
     return languageMap[ext] || null;
   }
 
-  async getFileTree(): Promise<
+  async getFileTree(scope?: string): Promise<
     {
       path: string;
       name: string;
@@ -592,8 +592,9 @@ export class GitService {
     }[]
   > {
     try {
+      const scopeArg = scope ? ` "${scope}"` : "";
       const { stdout } = await execPromise(
-        `cd "${this.repoPath}" && git ls-files`,
+        `cd "${this.repoPath}" && git ls-files${scopeArg}`,
         { timeout: DEFAULT_GIT_TIMEOUT_MS },
       );
 
@@ -607,48 +608,56 @@ export class GitService {
       }[] = [];
       const filePaths = stdout.trim().split("\n").filter(Boolean);
 
-      for (const filePath of filePaths) {
-        // Skip ignored files
-        if (this.shouldIgnoreFile(filePath)) {
-          continue;
-        }
-
-        try {
-          const fullPath = path.join(this.repoPath, filePath);
-          const stats = await fs.stat(fullPath);
-          const name = path.basename(filePath);
-          const extension = path.extname(filePath) || null;
-
-          // Count lines in the file
-          let lineCount = 0;
-          try {
-            if (stats.size <= MAX_FILE_BYTES_TO_READ_FOR_LINECOUNT) {
-              const content = await fs.readFile(fullPath, "utf-8");
-              lineCount = content.split("\n").length;
-            } else {
-              // Avoid reading very large files into memory.
-              lineCount = Math.ceil(stats.size / 80);
+      // Process in chunks to avoid blocking the event loop on huge monorepos
+      const concurrencyLimit = 50;
+      for (let i = 0; i < filePaths.length; i += concurrencyLimit) {
+        const batch = filePaths.slice(i, i + concurrencyLimit);
+        
+        await Promise.all(
+          batch.map(async (filePath) => {
+            // Skip ignored files
+            if (this.shouldIgnoreFile(filePath)) {
+              return;
             }
-          } catch {
-            // If can't read as text, estimate from bytes (avg 80 chars per line)
-            lineCount = Math.ceil(stats.size / 80);
-          }
 
-          // Detect language from extension
-          const language = this.detectLanguageFromExtension(extension);
+            try {
+              const fullPath = path.join(this.repoPath, filePath);
+              const stats = await fs.stat(fullPath);
+              const name = path.basename(filePath);
+              const extension = path.extname(filePath) || null;
 
-          files.push({
-            path: filePath,
-            name,
-            size: stats.size,
-            extension,
-            lines: lineCount,
-            language,
-          });
-        } catch {
-          // Skip files that can't be accessed
-          continue;
-        }
+              // Count lines in the file
+              let lineCount = 0;
+              try {
+                if (stats.size <= MAX_FILE_BYTES_TO_READ_FOR_LINECOUNT) {
+                  const content = await fs.readFile(fullPath, "utf-8");
+                  lineCount = content.split("\n").length;
+                } else {
+                  // Avoid reading very large files into memory.
+                  lineCount = Math.ceil(stats.size / 80);
+                }
+              } catch {
+                // If can't read as text, estimate from bytes (avg 80 chars per line)
+                lineCount = Math.ceil(stats.size / 80);
+              }
+
+              // Detect language from extension
+              const language = this.detectLanguageFromExtension(extension);
+
+              files.push({
+                path: filePath,
+                name,
+                size: stats.size,
+                extension,
+                lines: lineCount,
+                language,
+              });
+            } catch {
+              // Skip files that can't be accessed
+              return;
+            }
+          })
+        );
       }
 
       return files;
@@ -660,9 +669,9 @@ export class GitService {
   /**
    * Detect programming languages in the repository
    */
-  async detectLanguages(): Promise<LanguageData[]> {
+  async detectLanguages(scope?: string): Promise<LanguageData[]> {
     try {
-      const files = await this.getFileTree();
+      const files = await this.getFileTree(scope);
 
       const languageStats = new Map<string, { bytes: number; lines: number }>();
       let totalBytes = 0;

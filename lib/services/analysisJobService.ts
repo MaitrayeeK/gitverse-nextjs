@@ -22,6 +22,7 @@ export class AnalysisJobService {
     repositoryId: number;
     userId: number;
     maxAttempts?: number;
+    scope?: string;
   }): Promise<AnalysisJob> {
     try {
       return await prisma.analysisJob.create({
@@ -32,6 +33,7 @@ export class AnalysisJobService {
           status: "QUEUED",
           progressPercent: 0,
           progressMessage: "Queued",
+          progressDetails: params.scope ? { scope: params.scope } : undefined,
           maxAttempts: params.maxAttempts ?? 3,
         },
       });
@@ -57,6 +59,7 @@ export class AnalysisJobService {
             status: "QUEUED",
             progressPercent: 0,
             progressMessage: "Queued",
+            progressDetails: params.scope ? { scope: params.scope } : undefined,
             maxAttempts: params.maxAttempts ?? 3,
           },
         });
